@@ -32,8 +32,29 @@ fn main() -> std::io::Result<()> {
         .map(|game| game.id)
         .collect();
 
-    println!("possible games: {:?}", possible_games);
+    println!("possible games: {possible_games:?}");
     let sum: usize = possible_games.iter().sum();
+    println!("sum: {sum}");
+
+    let game_powers: Vec<usize> = games
+        .iter()
+        .map(|game| {
+            let mut max_red = 0;
+            let mut max_green = 0;
+            let mut max_blue = 0;
+
+            for handful in &game.handfuls {
+                max_red = max_red.max(handful.reds());
+                max_green = max_green.max(handful.greens());
+                max_blue = max_blue.max(handful.blues());
+            }
+
+            max_red * max_green * max_blue
+        })
+        .collect();
+
+    println!("powers: {game_powers:?}");
+    let sum: usize = game_powers.iter().sum();
     println!("sum: {sum}");
 
     Ok(())
