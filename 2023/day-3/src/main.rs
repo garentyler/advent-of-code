@@ -27,21 +27,28 @@ fn main() -> std::io::Result<()> {
     println!("numbers: {numbers:?}");
     println!("symbols: {symbols:?}");
 
-    numbers.retain(|number| {
-        for symbol in &symbols {
-            if number.is_adjacent(symbol) {
-                return true;
+    let mut gears: Vec<(Number, Number)> = vec![];
+
+    for symbol in &symbols {
+        if symbol.value != '*' {
+            continue;
+        }
+
+        let mut adjacent_numbers = vec![];
+
+        for number in &numbers {
+            if symbol.is_adjacent(number) {
+                adjacent_numbers.push(number);
             }
         }
-        false
-    });
 
-    println!("adjacents: {numbers:?}");
-
-    let mut sum = 0usize;
-    for number in &numbers {
-        sum += number.value;
+        if adjacent_numbers.len() == 2 {
+            gears.push((*adjacent_numbers[0], *adjacent_numbers[1]));
+        }
     }
+
+    let mut gear_ratios = gears.into_iter().map(|(n1, n2)| n1.value * n2.value);
+    let sum: usize = gear_ratios.sum();
 
     println!("sum: {sum}");
 
@@ -82,7 +89,11 @@ impl Line {
             }
 
             if c.is_ascii_punctuation() && c != '.' {
-                symbols.push(Symbol { line_num, index: i });
+                symbols.push(Symbol {
+                    value: c,
+                    line_num,
+                    index: i,
+                });
             }
 
             i += 1;
@@ -121,6 +132,12 @@ impl Number {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct Symbol {
+    pub value: char,
     pub line_num: usize,
     pub index: usize,
+}
+impl Symbol {
+    pub fn is_adjacent(&self, number: &Number) -> bool {
+        number.is_adjacent(self)
+    }
 }
