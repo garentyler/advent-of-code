@@ -8,6 +8,7 @@ use nom::{
     sequence::{separated_pair, terminated},
     IResult,
 };
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 fn main() -> std::io::Result<()> {
@@ -82,12 +83,12 @@ struct Almanac {
     humidity_location_map: Map,
 }
 impl Almanac {
-    pub fn seeds(&self) -> impl Iterator<Item = usize> + '_ {
+    pub fn seeds(&self) -> impl ParallelIterator<Item = usize> + '_ {
         self.seeds
-            .iter()
+            .par_iter()
             .flat_map(|(start, count)| *start..start + count)
     }
-    pub fn mapped_seeds(&self) -> impl Iterator<Item = MappedSeed> + '_ {
+    pub fn mapped_seeds(&self) -> impl ParallelIterator<Item = MappedSeed> + '_ {
         self.seeds().map(|seed| {
             let soil = self.seed_soil_map.map(Item::Seed, seed);
             let fertilizer = self.soil_fertilizer_map.map(Item::Soil, soil);
