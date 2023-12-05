@@ -2,7 +2,7 @@ fn main() -> std::io::Result<()> {
     let mut buffer = String::new();
     let stdin = std::io::stdin();
 
-    let mut cards: Vec<Card> = vec![];
+    let mut cards: Vec<(usize, Card)> = vec![];
 
     while let Ok(_chars_read) = stdin.read_line(&mut buffer) {
         if buffer == "" {
@@ -12,18 +12,38 @@ fn main() -> std::io::Result<()> {
         }
 
         let mut card = Card::parse(&buffer).unwrap();
-        cards.push(card);
+        cards.push((1, card));
 
         buffer = String::new();
     }
     print!("\n");
 
-    let mut sum = 0;
-    for card in &cards {
-        println!("{card:?}\n\tpoints: {}", card.points());
-        sum += card.points();
+    // Loop through and duplicate all the cards.
+    let mut i = 0;
+    while i < cards.len() {
+        let count = cards[i].0;
+        let matching_numbers_count = cards[i].1.matching_numbers().len();
+
+        let start = i + 1;
+        let end = i + 1 + matching_numbers_count;
+
+        for j in start..end {
+            cards[j].0 += count;
+        }
+
+        i += 1;
     }
-    println!("sum: {sum}");
+
+    // Loop through the duplicated cards and sum the score.
+    let mut point_sum = 0;
+    let mut count_sum = 0;
+    for (count, card) in &cards {
+        println!("{card:?}\n\tcount: {}, points: {}", count, card.points(),);
+        count_sum += count;
+        point_sum += card.points();
+    }
+    println!("point sum: {point_sum}");
+    println!("count sum: {count_sum}");
 
     Ok(())
 }
@@ -82,12 +102,12 @@ impl Card {
         })
     }
     pub fn points(&self) -> usize {
-        match self.actual_numbers_winning().len() {
+        match self.matching_numbers().len() {
             0 => 0,
             n => 2usize.pow(n as u32 - 1),
         }
     }
-    pub fn actual_numbers_winning(&self) -> Vec<usize> {
+    pub fn matching_numbers(&self) -> Vec<usize> {
         self.actual_numbers
             .iter()
             .filter(|n| self.winning_numbers.contains(n))
