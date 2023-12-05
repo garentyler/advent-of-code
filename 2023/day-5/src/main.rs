@@ -5,7 +5,7 @@ use nom::{
     combinator::{map, map_res, verify},
     error::{Error, ErrorKind},
     multi::many1,
-    sequence::{pair, terminated},
+    sequence::{separated_pair, terminated},
     IResult,
 };
 use std::collections::HashMap;
@@ -25,9 +25,7 @@ fn main() -> std::io::Result<()> {
     let (_, almanac) = Almanac::parse(&buffer).unwrap();
     println!("almanac: {almanac:?}");
     let mapped_seeds = almanac.mapped_seeds();
-    println!("\nmapped seeds: {:?}", mapped_seeds);
-
-    let min_location = mapped_seeds.iter().map(|s| s.location).min().unwrap();
+    let min_location = mapped_seeds.map(|s| s.location).min().unwrap();
     println!("\nminimum location: {min_location}");
 
     Ok(())
@@ -74,7 +72,7 @@ impl Item {
 
 #[derive(Clone, Debug)]
 struct Almanac {
-    seeds: Vec<usize>,
+    seeds: Vec<(usize, usize)>,
     seed_soil_map: Map,
     soil_fertilizer_map: Map,
     fertilizer_water_map: Map,
@@ -84,11 +82,14 @@ struct Almanac {
     humidity_location_map: Map,
 }
 impl Almanac {
-    pub fn mapped_seeds(&self) -> Vec<MappedSeed> {
-        let mut seeds = vec![];
-
-        for seed in &self.seeds {
-            let soil = self.seed_soil_map.map(Item::Seed, *seed);
+    pub fn seeds(&self) -> impl Iterator<Item = usize> + '_ {
+        self.seeds
+            .iter()
+            .flat_map(|(start, count)| *start..start + count)
+    }
+    pub fn mapped_seeds(&self) -> impl Iterator<Item = MappedSeed> + '_ {
+        self.seeds().map(|seed| {
+            let soil = self.seed_soil_map.map(Item::Seed, seed);
             let fertilizer = self.soil_fertilizer_map.map(Item::Soil, soil);
             let water = self.fertilizer_water_map.map(Item::Fertilizer, fertilizer);
             let light = self.water_light_map.map(Item::Water, water);
@@ -98,8 +99,8 @@ impl Almanac {
                 .map(Item::Temperature, temperature);
             let location = self.humidity_location_map.map(Item::Humidity, humidity);
 
-            seeds.push(MappedSeed {
-                seed: *seed,
+            MappedSeed {
+                seed,
                 soil,
                 fertilizer,
                 water,
@@ -107,10 +108,8 @@ impl Almanac {
                 temperature,
                 humidity,
                 location,
-            });
-        }
-
-        seeds
+            }
+        })
     }
     pub fn parse(input: &str) -> IResult<&str, Almanac> {
         let mut seed_soil_map: Option<Map> = None;
@@ -164,12 +163,17 @@ impl Almanac {
 
         Ok((input, almanac))
     }
-    fn parse_seeds(input: &str) -> IResult<&str, Vec<usize>> {
+    fn parse_seeds(input: &str) -> IResult<&str, Vec<(usize, usize)>> {
         let (input, _) = multispace0(input)?;
         let (input, _) = tag("seeds: ")(input)?;
-        many1(map_res(terminated(digit1, multispace1), |s: &str| {
-            s.parse::<usize>()
-        }))(input)
+        many1(terminated(
+            separated_pair(
+                map_res(digit1, |s: &str| s.parse::<usize>()),
+                multispace1,
+                map_res(digit1, |s: &str| s.parse::<usize>()),
+            ),
+            multispace1,
+        ))(input)
     }
 }
 
